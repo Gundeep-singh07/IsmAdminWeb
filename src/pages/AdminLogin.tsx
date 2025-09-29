@@ -2,10 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Lock, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { authAPI } from "../../services/constants";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
@@ -16,26 +23,40 @@ const AdminLogin = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!username || !password) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please enter both username and password.",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const response = await authAPI.login(username, password);
 
-    if (username === "ism@1" && password === "ism@12.") {
+      // Set the old localStorage flag for compatibility with existing code
       localStorage.setItem("isAdminLoggedIn", "true");
+
       toast({
         title: "Welcome back!",
         description: "Successfully logged in to admin dashboard.",
       });
+
       navigate("/admin");
-    } else {
+    } catch (error) {
       toast({
         variant: "destructive",
-        title: "Invalid credentials",
-        description: "Please check your username and password.",
+        title: "Login Failed",
+        description:
+          error instanceof Error ? error.message : "Invalid credentials",
       });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -45,7 +66,9 @@ const AdminLogin = () => {
           <div className="mx-auto w-12 h-12 bg-admin-primary rounded-full flex items-center justify-center mb-4">
             <Lock className="w-6 h-6 text-admin-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl font-bold text-admin-card-foreground">Admin Dashboard</CardTitle>
+          <CardTitle className="text-2xl font-bold text-admin-card-foreground">
+            Admin Dashboard
+          </CardTitle>
           <CardDescription>Sign in to access the admin panel</CardDescription>
         </CardHeader>
         <CardContent>
@@ -62,6 +85,7 @@ const AdminLogin = () => {
                   onChange={(e) => setUsername(e.target.value)}
                   className="pl-10"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -77,11 +101,12 @@ const AdminLogin = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-admin-primary hover:bg-admin-primary/90 text-admin-primary-foreground transition-smooth"
               disabled={isLoading}
             >
@@ -90,8 +115,12 @@ const AdminLogin = () => {
           </form>
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>Demo credentials:</p>
-            <p>Username: <code className="bg-muted px-1 rounded">ism@1</code></p>
-            <p>Password: <code className="bg-muted px-1 rounded">ism@12.</code></p>
+            <p>
+              Username: <code className="bg-muted px-1 rounded">ism@1</code>
+            </p>
+            <p>
+              Password: <code className="bg-muted px-1 rounded">ism@12.</code>
+            </p>
           </div>
         </CardContent>
       </Card>
