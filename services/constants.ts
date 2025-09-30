@@ -1,5 +1,5 @@
 // services/constants.ts
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "http://localhost:81/api";
 
 // Interface definitions
 interface LoginResponse {
@@ -48,9 +48,9 @@ export interface BlogPost {
   image: string;
   slug: string;
   status: "draft" | "published" | "archived";
-  tags: string[];
+  tags?: string[];
   viewCount: number;
-  author: {
+  author?: {
     _id: string;
     username: string;
   };
@@ -100,7 +100,7 @@ const getAuthHeaders = (): HeadersInit => {
   };
 };
 
-// Generic API call function
+// Generic API call function with better error handling
 const apiCall = async <T>(
   endpoint: string,
   options: RequestInit = {}
@@ -115,9 +115,25 @@ const apiCall = async <T>(
     ...options,
   };
 
+  console.log(`🔄 API Call: ${options.method || "GET"} ${url}`);
+
   try {
     const response = await fetch(url, config);
-    const data = await response.json();
+
+    console.log(
+      `📡 Response Status: ${response.status} ${response.statusText}`
+    );
+
+    let data;
+    const contentType = response.headers.get("content-type");
+
+    if (contentType && contentType.includes("application/json")) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      console.error("❌ Non-JSON response:", text);
+      throw new Error("Server returned non-JSON response");
+    }
 
     if (!response.ok) {
       // Handle validation errors
@@ -130,6 +146,7 @@ const apiCall = async <T>(
 
       // Handle authentication errors
       if (response.status === 401 || response.status === 403) {
+        console.error("🔒 Authentication error, clearing tokens");
         removeAuthToken();
         localStorage.removeItem("isAdminLoggedIn");
         if (window.location.pathname !== "/admin/login") {
@@ -140,11 +157,21 @@ const apiCall = async <T>(
       throw new Error(data.message || data.error || "An error occurred");
     }
 
+    console.log("✅ API Call Successful");
     return data;
   } catch (error) {
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      console.error("❌ Network Error: Cannot connect to backend at", url);
+      throw new Error(
+        `Cannot connect to server. Make sure backend is running on port 81.`
+      );
+    }
+
     if (error instanceof Error) {
+      console.error("❌ API Error:", error.message);
       throw error;
     }
+
     throw new Error("Network error occurred");
   }
 };
@@ -157,9 +184,9 @@ export const authAPI = {
       body: JSON.stringify({ username, password }),
     });
 
-    // Store token in localStorage
     if (response.token) {
       setAuthToken(response.token);
+      console.log("🔑 Token saved to localStorage");
     }
 
     return response;
@@ -175,10 +202,13 @@ export const authAPI = {
   logout: (): void => {
     removeAuthToken();
     localStorage.removeItem("isAdminLoggedIn");
+    console.log("👋 Logged out, tokens cleared");
   },
 
   isAuthenticated: (): boolean => {
-    return getAuthToken() !== null;
+    const hasToken = getAuthToken() !== null;
+    console.log("🔐 Is Authenticated:", hasToken);
+    return hasToken;
   },
 };
 
@@ -191,7 +221,6 @@ export const blogAPI = {
     search?: string;
   }): Promise<BlogPost[]> => {
     const searchParams = new URLSearchParams();
-
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.limit) searchParams.append("limit", params.limit.toString());
     if (params?.status) searchParams.append("status", params.status);
@@ -257,7 +286,6 @@ export const testimonialsAPI = {
     rating?: number;
   }): Promise<Testimonial[]> => {
     const searchParams = new URLSearchParams();
-
     if (params?.page) searchParams.append("page", params.page.toString());
     if (params?.limit) searchParams.append("limit", params.limit.toString());
     if (params?.status) searchParams.append("status", params.status);

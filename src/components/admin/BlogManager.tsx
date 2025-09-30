@@ -259,6 +259,7 @@
 // };
 
 // export default BlogManager;
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -409,7 +410,7 @@ const BlogManager = () => {
       title: blog.title,
       content: blog.content,
       image: blog.image || "",
-      tags: blog.tags.join(", "),
+      tags: blog.tags ? blog.tags.join(", ") : "",
       status: blog.status,
     });
     setIsCreating(true);
@@ -665,15 +666,17 @@ const BlogManager = () => {
                         >
                           {blog.status}
                         </Badge>
-                        {blog.tags.map((tag, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
+                        {blog.tags &&
+                          blog.tags.length > 0 &&
+                          blog.tags.map((tag, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
                       </div>
                     </div>
                     <div className="flex gap-2 ml-4">
@@ -711,7 +714,9 @@ const BlogManager = () => {
                         </div>
                       )}
                     </div>
-                    <div className="text-xs">By {blog.author.username}</div>
+                    <div className="text-xs">
+                      By {blog.author?.username || "Unknown"}
+                    </div>
                   </div>
                 </div>
               </div>
